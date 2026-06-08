@@ -118,7 +118,7 @@ export const useGameStore = create<GameStore>()(
     }),
     {
       name: "wc5s-store",
-      version: 1,
+      version: 2,
     },
   ),
 );

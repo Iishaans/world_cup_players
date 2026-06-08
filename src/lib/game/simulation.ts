@@ -317,10 +317,12 @@ export function simulateTournament({
       wins++;
     } else {
       losses++;
-      if (!eliminatedStage) eliminatedStage = stage;
     }
 
-    if (shouldStopTournament(stage, matches)) break;
+    if (shouldStopTournament(stage, matches)) {
+      eliminatedStage = stage;
+      break;
+    }
   }
 
   const champion = wins === 7 && matches.length === STAGES.length;

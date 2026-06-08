@@ -50,7 +50,8 @@ export function ResultsView({ game }: { game: GameState }) {
           </div>
           {finalMatch && (
             <div className="mt-1 text-xs text-slate-400">
-              Final: {finalMatch.outcome === "win" ? "Beat" : "Lost to"}{" "}
+              {STAGE_LABELS[finalMatch.stage]}:{" "}
+              {finalMatch.outcome === "win" ? "Beat" : "Lost to"}{" "}
               {finalMatch.opponentName} {finalMatch.userGoals}-{finalMatch.opponentGoals}
             </div>
           )}

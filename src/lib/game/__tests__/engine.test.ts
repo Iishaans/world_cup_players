@@ -264,6 +264,12 @@ describe("tournament simulation", () => {
       if (groupLosses >= 2 && res.matches.length <= 3) {
         foundEarlyExit = true;
         expect(res.champion).toBe(false);
+        expect(res.eliminatedStage).toBe(res.matches[res.matches.length - 1]?.stage);
+        expect(
+          res.matches.every(
+            (m) => !["round_of_16", "quarter_final", "semi_final", "final"].includes(m.stage),
+          ),
+        ).toBe(true);
         break;
       }
     }
