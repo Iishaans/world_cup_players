@@ -5,6 +5,9 @@ A daily, historical **5-a-side draft game**. Each round spins a random
 of five roles, then simulate a seven-match World Cup 5s tournament. Go **7-0** to
 lift the trophy.
 
+**Live demo:** [world-cup-5s.vercel.app](https://world-cup-5s.vercel.app) *(set
+`NEXT_PUBLIC_SITE_URL` in Vercel to your production domain for correct OG links)*
+
 The game rewards World Cup knowledge, **role balance**, chemistry, tournament
 aura and tactical fit — **not** simply picking the five highest-rated players. A
 team of five attackers with no keeper gets dismantled.
@@ -30,8 +33,9 @@ npm run lint     # eslint
 npm test         # run the engine test suite (Vitest)
 ```
 
-No database is required — the MVP runs entirely client-side
-(Zustand + `localStorage`) and the API uses an in-memory store.
+No database is required to play — the MVP runs client-side (Zustand +
+`localStorage`). The API uses in-memory storage by default; set `DATABASE_URL` to
+enable the global daily leaderboard via PostgreSQL (Neon / Vercel Postgres).
 
 ---
 
@@ -41,7 +45,8 @@ No database is required — the MVP runs entirely client-side
 2. **Pick & assign** — choose one eligible legend and lock them into a unique
    role: `Keeper · Stopper · Controller · Carrier · Finisher`.
 3. **Simulate** — a 7-match bracket (3 group games → R16 → QF → SF → Final)
-   against historical opponent archetypes of rising difficulty.
+   against historical opponent archetypes of rising difficulty. Lose a knockout
+   match or two group games and you're out early.
 4. **Results** — match log, team vector, strengths/weaknesses, a player of the
    tournament and a shareable result card (copy text or download PNG).
 
@@ -94,7 +99,8 @@ prisma/schema.prisma       Reference schema for a Postgres deployment
 - **`chemistry.ts`** — same nation/decade/World Cup bonuses, known partnerships,
   tactical synergy and structural penalties (no keeper = −20, etc.).
 - **`simulation.ts`** — xG-based match engine with matchup + knockout-aura
-  modifiers, extra time and the full tournament loop.
+  modifiers, extra time, early elimination (knockout loss or 2 group losses),
+  and the tournament loop.
 - **`penalties.ts`** — five-a-side shootout using your players as takers/keeper.
 - **`scoring.ts` / `explanations.ts`** — leaderboard score and human-readable
   strengths, weaknesses and match notes.
@@ -103,24 +109,26 @@ prisma/schema.prisma       Reference schema for a Postgres deployment
 
 ## Content
 
-- **287** curated player cards (each a *World Cup-era* version of a player).
-- **68** nation-decade pools across 27 nations.
+- **511+** curated player cards (each a *World Cup-era* version of a player).
+- **68** nation-decade pools across 27 nations (10 cards minimum for major
+  nations; 5 for smaller pools).
 - **16** historical opponent archetypes.
 
 > Ratings are **game ratings** tuned for balance and fun, not official stats.
 
 ### Extending the data
 
-Add cards in `src/lib/data/seedCards.ts` using the `mk(...)` factory, add pools
-in `nationDecadePools.ts`, and opponents in `opponents.ts`. The draft only offers
-pools that have at least `minEligiblePlayers` cards, so the game degrades
-gracefully as you add content.
+Add cards in `src/lib/data/seedCards.ts` or `seedCardsExpansion.ts` using the
+`mk(...)` factory, add pools in `nationDecadePools.ts`, and opponents in
+`opponents.ts`. The draft only offers pools that have at least
+`minEligiblePlayers` cards, so the game degrades gracefully as you add content.
 
 ---
 
 ## API
 
-All routes are backed by `src/lib/server/store.ts` (in-memory):
+Routes are backed by `src/lib/server/store.ts` (in-memory by default, PostgreSQL
+when `DATABASE_URL` is set):
 
 ```
 POST /api/games                  Create a game ({ mode, seed? })
@@ -132,15 +140,18 @@ GET  /api/daily                  Get/create the daily game
 GET  /api/cards?nation=&decade=  List player cards
 GET  /api/cards/:id              Card detail
 GET  /api/pools                  List nation-decade pools
-GET  /api/leaderboard/daily?date= Daily leaderboard
+GET  /api/leaderboard/daily?date= Daily leaderboard (global when DB configured)
+POST /api/leaderboard/daily      Submit a daily score
 ```
 
-### Going to a real database
+### Global daily leaderboard (PostgreSQL)
 
-`prisma/schema.prisma` documents `PlayerCard`, `NationDecadePool`, `Game` and
-`DailyResult` models. To use it: install Prisma, set `DATABASE_URL`, run a
-migration, and replace the functions in `src/lib/server/store.ts` with
-Prisma-backed implementations. The route handlers won't need to change.
+1. Create a Postgres database (Neon or Vercel Postgres).
+2. Set `DATABASE_URL` in Vercel / `.env`.
+3. Run `npx prisma migrate dev --name init` locally (or deploy migrations in CI).
+4. Daily runs auto-submit scores; the `/leaderboard` page shows today's global top 50.
+
+Optional: set `NEXT_PUBLIC_SITE_URL=https://your-domain.com` for Open Graph links.
 
 ---
 
@@ -152,5 +163,8 @@ npm test
 
 Covers: deterministic RNG, role-fit multipliers, team vector outputs, chemistry
 bonuses, draft constraint enforcement (incl. hardcore no-repeat), bounded &
-deterministic penalty shootouts, deterministic 7-match tournaments, and a stable
-daily seed.
+deterministic penalty shootouts, tournament elimination rules, pool depth
+minimums, and a stable daily seed.
+
+CI runs on every push via GitHub Actions (`.github/workflows/ci.yml`): `npm test`,
+`npm run lint`, and `npm run build`.

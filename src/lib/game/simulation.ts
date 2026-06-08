@@ -44,6 +44,45 @@ const KNOCKOUT_STAGES: TournamentStage[] = [
   "final",
 ];
 
+const GROUP_STAGES: TournamentStage[] = ["group_1", "group_2", "group_3"];
+
+function formatStageLabel(stage: TournamentStage): string {
+  switch (stage) {
+    case "group_1":
+      return "Group 1";
+    case "group_2":
+      return "Group 2";
+    case "group_3":
+      return "Group 3";
+    case "round_of_16":
+      return "R16";
+    case "quarter_final":
+      return "QF";
+    case "semi_final":
+      return "SF";
+    case "final":
+      return "Final";
+    default:
+      return stage;
+  }
+}
+
+function countGroupLosses(matches: MatchResult[]): number {
+  return matches.filter(
+    (m) => GROUP_STAGES.includes(m.stage) && m.outcome === "loss",
+  ).length;
+}
+
+function shouldStopTournament(
+  stage: TournamentStage,
+  matches: MatchResult[],
+): boolean {
+  const last = matches[matches.length - 1];
+  if (!last || last.outcome !== "loss") return false;
+  if (KNOCKOUT_STAGES.includes(stage)) return true;
+  return GROUP_STAGES.includes(stage) && countGroupLosses(matches) >= 2;
+}
+
 const BASE_XG = 2.2;
 
 function attackRating(v: TeamVector): number {
@@ -280,9 +319,11 @@ export function simulateTournament({
       losses++;
       if (!eliminatedStage) eliminatedStage = stage;
     }
+
+    if (shouldStopTournament(stage, matches)) break;
   }
 
-  const champion = wins === 7;
+  const champion = wins === 7 && matches.length === STAGES.length;
   const goalDifference = goalsFor - goalsAgainst;
 
   const strengths = generateStrengths(teamVector, roster);
@@ -373,10 +414,11 @@ function buildShareText({
   }
   lines.push("");
   lines.push(`Result: ${wins}-${losses}${champion ? " \u{1F3C6}" : ""}`);
-  const final = matches[matches.length - 1];
-  if (final) {
+  const last = matches[matches.length - 1];
+  if (last) {
+    const stageLabel = formatStageLabel(last.stage);
     lines.push(
-      `Final: ${final.outcome === "win" ? "Beat" : "Lost to"} ${final.opponentName} ${final.userGoals}-${final.opponentGoals}`,
+      `${stageLabel}: ${last.outcome === "win" ? "Beat" : "Lost to"} ${last.opponentName} ${last.userGoals}-${last.opponentGoals}`,
     );
   }
   lines.push(`Aura: ${teamVector.tournamentAura}`);
@@ -385,4 +427,4 @@ function buildShareText({
   return lines.join("\n");
 }
 
-export { STAGES, KNOCKOUT_STAGES };
+export { STAGES, KNOCKOUT_STAGES, GROUP_STAGES };

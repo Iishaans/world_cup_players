@@ -1,10 +1,16 @@
 import type { PlayerWorldCupCard } from "@/types";
-import { seedCards } from "./seedCards";
+import { seedCards as baseSeedCards } from "./seedCards";
+import { seedCardsExpansion } from "./seedCardsExpansion";
 
-export { seedCards } from "./seedCards";
+export { seedCardsExpansion } from "./seedCardsExpansion";
 export { nationDecadePools, getPool } from "./nationDecadePools";
 export { opponents, getOpponent } from "./opponents";
 export * from "./nations";
+
+export const seedCards: PlayerWorldCupCard[] = [
+  ...baseSeedCards,
+  ...seedCardsExpansion,
+];
 
 const cardMap = new Map<string, PlayerWorldCupCard>(
   seedCards.map((c) => [c.id, c]),

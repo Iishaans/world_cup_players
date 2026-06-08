@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { runSimulation } from "@/lib/game";
-import { loadGame, recordDaily, saveGame } from "@/lib/server/store";
+import { loadGame, saveGame, submitDailyEntry } from "@/lib/server/store";
 
 export async function POST(
   _req: Request,
@@ -19,6 +19,16 @@ export async function POST(
   }
   const next = runSimulation(game);
   saveGame(next);
-  recordDaily(next);
+  if (next.mode === "daily" && next.result) {
+    const date = next.seed.replace("daily-", "");
+    await submitDailyEntry({
+      date,
+      gameId: next.id,
+      wins: next.result.record.wins,
+      losses: next.result.record.losses,
+      champion: next.result.champion,
+      score: next.result.score,
+    });
+  }
   return NextResponse.json({ game: next });
 }

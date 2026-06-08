@@ -6,10 +6,34 @@ import type { GameMode, GameState, Role } from "@/types";
 import {
   applyReroll,
   createGame,
+  dailySeed,
   runSimulation,
   selectPlayer,
   type RerollKind,
 } from "@/lib/game";
+
+async function submitDailyScore(game: GameState): Promise<void> {
+  if (game.mode !== "daily" || !game.result) return;
+  const date = game.seed.startsWith("daily-")
+    ? game.seed.replace("daily-", "")
+    : dailySeed();
+  try {
+    await fetch("/api/leaderboard/daily", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        date,
+        gameId: game.id,
+        wins: game.result.record.wins,
+        losses: game.result.record.losses,
+        champion: game.result.champion,
+        score: game.result.score,
+      }),
+    });
+  } catch {
+    // Leaderboard submission is best-effort; local results still persist.
+  }
+}
 
 export interface CompletedSummary {
   id: string;
@@ -81,6 +105,7 @@ export const useGameStore = create<GameStore>()(
             .sort((a, b) => b.score - a.score)
             .slice(0, 50),
         }));
+        void submitDailyScore(done);
       },
 
       resetGame: () => set({ game: undefined }),

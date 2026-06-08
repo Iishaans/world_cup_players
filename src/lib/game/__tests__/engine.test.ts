@@ -221,11 +221,53 @@ describe("tournament simulation", () => {
     expect(a.matches.map((m) => m.userGoals)).toEqual(b.matches.map((m) => m.userGoals));
   });
 
-  it("plays exactly seven matches and totals win/loss to 7", () => {
+  it("stops after a knockout loss", () => {
     const res = simulateTournament({ roster: referenceRoster, getCard, seed: "seven", mode: "classic", opponents });
-    expect(res.matches).toHaveLength(7);
-    expect(res.record.wins + res.record.losses).toBe(7);
-    expect(res.champion).toBe(res.record.wins === 7);
+    const played = res.matches.length;
+    expect(played).toBeGreaterThanOrEqual(1);
+    expect(played).toBeLessThanOrEqual(7);
+    expect(res.record.wins + res.record.losses).toBe(played);
+    expect(res.champion).toBe(res.record.wins === 7 && played === 7);
+    if (res.eliminatedStage && res.matches[res.matches.length - 1]?.outcome === "loss") {
+      const last = res.matches[res.matches.length - 1];
+      const knockoutLoss =
+        last && ["round_of_16", "quarter_final", "semi_final", "final"].includes(last.stage);
+      const twoGroupLosses =
+        res.matches.filter(
+          (m) =>
+            ["group_1", "group_2", "group_3"].includes(m.stage) && m.outcome === "loss",
+        ).length >= 2;
+      expect(knockoutLoss || twoGroupLosses).toBe(true);
+    }
+  });
+
+  it("eliminates after two group-stage losses without playing knockouts", () => {
+    const weakRoster = {
+      keeper: { playerCardId: "taffarel-brazil-1990s", role: "keeper" as const },
+      stopper: { playerCardId: "taffarel-brazil-1990s", role: "stopper" as const },
+      controller: { playerCardId: "taffarel-brazil-1990s", role: "controller" as const },
+      carrier: { playerCardId: "taffarel-brazil-1990s", role: "carrier" as const },
+      finisher: { playerCardId: "taffarel-brazil-1990s", role: "finisher" as const },
+    };
+    let foundEarlyExit = false;
+    for (let i = 0; i < 40; i++) {
+      const res = simulateTournament({
+        roster: weakRoster,
+        getCard,
+        seed: `weak-group-${i}`,
+        mode: "classic",
+        opponents,
+      });
+      const groupLosses = res.matches.filter(
+        (m) => ["group_1", "group_2", "group_3"].includes(m.stage) && m.outcome === "loss",
+      ).length;
+      if (groupLosses >= 2 && res.matches.length <= 3) {
+        foundEarlyExit = true;
+        expect(res.champion).toBe(false);
+        break;
+      }
+    }
+    expect(foundEarlyExit).toBe(true);
   });
 
   it("produces strengths, weaknesses and a share text", () => {
@@ -241,5 +283,20 @@ describe("daily seed", () => {
     const d = new Date(Date.UTC(2026, 5, 8));
     expect(dailySeed(d)).toBe("2026-06-08");
     expect(dailySeed(d)).toBe(dailySeed(d));
+  });
+});
+
+describe("player pool depth", () => {
+  it("meets minimum card counts per enabled pool", () => {
+    const counts = new Map<string, number>();
+    for (const card of allCards()) {
+      const key = `${card.nation}-${card.decade}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    for (const pool of nationDecadePools) {
+      if (!pool.enabled) continue;
+      const have = counts.get(pool.id) ?? 0;
+      expect(have).toBeGreaterThanOrEqual(pool.minEligiblePlayers);
+    }
   });
 });
