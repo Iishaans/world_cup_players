@@ -1,0 +1,96 @@
+// Reference Prisma schema for a production (PostgreSQL) deployment.
+//
+// The MVP runs entirely client-side (Zustand + localStorage) with an
+// in-memory API store, so this schema is NOT required to play. It documents
+// how to persist games, cards, pools and daily results when you add a DB.
+//
+//   1. npm i -D prisma && npm i @prisma/client
+//   2. set DATABASE_URL in .env
+//   3. npx prisma migrate dev
+//   4. replace src/lib/server/store.ts with Prisma-backed implementations.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model PlayerCard {
+  id                 String   @id
+  playerId           String
+  name               String
+  shortName          String?
+  nation             String
+  decade             String
+  worldCups          Int[]
+  primaryPosition    String
+  secondaryPositions String[]
+
+  overall        Int
+  pace           Int
+  shooting       Int
+  passing        Int
+  dribbling      Int
+  defending      Int
+  physical       Int
+  goalkeeping    Int?
+  composure      Int
+  stamina        Int
+  weakFoot       Int
+  skillMoves     Int
+  tournamentAura Int
+  penaltyTaking  Int?
+  penaltySaving  Int?
+
+  roleFitKeeper     Int
+  roleFitStopper    Int
+  roleFitController Int
+  roleFitCarrier    Int
+  roleFitFinisher   Int
+
+  traits   String[]
+  profile  Json
+  metadata Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model NationDecadePool {
+  id                 String  @id
+  nation             String
+  decade             String
+  eligibleWorldCups  Int[]
+  minEligiblePlayers Int
+  starDepth          Int
+  rarity             String
+  enabled            Boolean @default(true)
+}
+
+model Game {
+  id        String   @id @default(cuid())
+  seed      String
+  mode      String
+  status    String
+  state     Json
+  result    Json?
+  userId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DailyResult {
+  id         String   @id @default(cuid())
+  date       String
+  gameId     String
+  userId     String?
+  score      Int
+  wins       Int
+  losses     Int
+  champion   Boolean
+  rosterHash String
+  createdAt  DateTime @default(now())
+}
